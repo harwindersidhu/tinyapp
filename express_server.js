@@ -37,8 +37,11 @@ app.get("/urls/:shortURL", (req, res) => {
 });
 
 app.post("/urls", (req, res) => {
-  console.log(req.body);  // Log the POST request body to the console
-  res.send("Ok");         // Respond with 'Ok' (we will replace this)
+  console.log(req.body);
+  let shortURL = generateRandomString();
+  urlDatabase[shortURL] = req.body.longURL;  // Log the POST request body to the console
+  //res.send(urlDatabase);         // Respond with 'Ok' (we will replace this)
+  res.redirect(`/urls/${shortURL}`);
 });
 
 function generateRandomString() {
@@ -50,10 +53,9 @@ function generateRandomString() {
       result += characters.charAt(Math.floor(Math.random() * charactersLength));
   }
 
-  console.log(result);
+  return result;
 }
 
 app.listen(PORT, () => {
-  generateRandomString();
   console.log(`Example app listening on port ${PORT}!`);
 });
