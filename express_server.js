@@ -39,7 +39,7 @@ app.get("/urls/:shortURL", (req, res) => {
 app.post("/urls", (req, res) => {
   console.log(req.body);
   let shortURL = generateRandomString();
-  urlDatabase[shortURL] = req.body.longURL;  
+  urlDatabase[shortURL] = req.body.longURL;
   res.redirect(`/urls/${shortURL}`);
 });
 
@@ -54,20 +54,26 @@ app.post("/urls/:shortURL/delete", (req, res) => {
   res.redirect("/urls");
 });
 
+app.post("/urls/:id", (req, res) => {
+  let newLongURL = req.body.newLongURL;
+  urlDatabase[req.params.id] = newLongURL;
+  res.redirect("/urls");
+});
+
 /**
  * @returns a string of 6 random alphanumeric characters
  */
-function generateRandomString() {
-  var characters = 'abcdefghijklmnopqrstuvwxyz0123456789';
-  var result = ""
-  var charactersLength = characters.length;
+const generateRandomString = () => {
+  let characters = 'abcdefghijklmnopqrstuvwxyz0123456789';
+  let result = "";
+  let charactersLength = characters.length;
 
-  for ( var i = 0; i <= 5 ; i++ ) {
-      result += characters.charAt(Math.floor(Math.random() * charactersLength));
+  for (let i = 0; i <= 5; i++) {
+    result += characters.charAt(Math.floor(Math.random() * charactersLength));
   }
 
   return result;
-}
+};
 
 app.listen(PORT, () => {
   console.log(`Example app listening on port ${PORT}!`);
