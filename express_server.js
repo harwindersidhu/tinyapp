@@ -1,6 +1,6 @@
 const express = require("express");
 const app = express();
-const PORT = 5000; // default port 8080
+const PORT = 8080; // default port 8080
 app.set("view engine", "ejs");
 const bodyParser = require("body-parser");
 app.use(bodyParser.urlencoded({extended: true}));
@@ -77,6 +77,13 @@ app.post("/urls/:id", (req, res) => {
 app.post("/login", (req, res) => {
   res.cookie("username", req.body.username);
   res.redirect("/urls");
+});
+
+app.get("/login", (req, res) => {
+  const templateVars = {
+    currentUser: users[req.cookies["user_id"]]
+  };
+  res.render("login", templateVars);
 });
 
 app.post("/logout", (req, res) => {
