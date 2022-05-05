@@ -93,15 +93,25 @@ app.get("/register", (req, res) => {
 
 app.post("/register", (req, res) => {
   let userId = generateRandomString();
-  let newUser = {
-    userId: userId,
-    email: req.body.email,
-    password: req.body.password
-  };
-  users[userId] = newUser;
-  res.cookie("user_id", userId);
-  console.log(users);
-  res.redirect("/urls");
+  let email = req.body.email;
+  let password = req.body.password;
+
+  //If email or password is empty string, send back a response with the 400 status code
+  if (email === "" || password === "") {
+    res.status(400).send("Email or password can't be empty");
+  } else if (emailIsExisting(email)) { //If email is already existing, send back a response with the 400 status code
+    res.status(400).send("Email already exists. Please use another email");
+  } else {
+    let newUser = {
+      userId,
+      email,
+      password
+    };
+    users[userId] = newUser;
+    res.cookie("user_id", userId);
+    console.log(users);
+    res.redirect("/urls");
+  } 
 });
 
 /**
@@ -117,6 +127,20 @@ const generateRandomString = () => {
   }
 
   return result;
+};
+
+/**
+ * 
+ * @param {*} email The email we needed to check if it is existing or not
+ * @returns true if email exists in users object, else returns false
+ */
+const emailIsExisting = (email) => {
+  for (let userId in users) {
+    if (users[userId].email === email) {
+      return true;
+    }
+  }
+  return false;
 };
 
 app.listen(PORT, () => {
