@@ -75,8 +75,19 @@ app.post("/urls/:id", (req, res) => {
 });
 
 app.post("/login", (req, res) => {
-  res.cookie("username", req.body.username);
-  res.redirect("/urls");
+  let email = req.body.email;
+  let password = req.body.password;
+  let currUserId = userIsExisting(email);
+  if (!email && !password) {
+    res.status(400).send("Email or password can't be empty");
+  } else if (!currUserId) {
+    res.status(403).send("Email cannot be found. Please check your email.");
+  } else if (!(passwordMatches(currUserId, password))) {
+    res.status(403).send("Wrong password. Please check your password.");
+  } else {
+    res.cookie("user_id", currUserId);
+    res.redirect("/urls");
+  }
 });
 
 app.get("/login", (req, res) => {
@@ -106,7 +117,7 @@ app.post("/register", (req, res) => {
   //If email or password is empty string, send back a response with the 400 status code
   if (email === "" || password === "") {
     res.status(400).send("Email or password can't be empty");
-  } else if (emailIsExisting(email)) { //If email is already existing, send back a response with the 400 status code
+  } else if (userIsExisting(email)) { //If email is already existing, send back a response with the 400 status code
     res.status(400).send("Email already exists. Please use another email");
   } else {
     let newUser = {
@@ -139,16 +150,27 @@ const generateRandomString = () => {
 /**
  * 
  * @param {*} email The email we needed to check if it is existing or not
- * @returns true if email exists in users object, else returns false
+ * @returns userId if email exists in users object, else returns null
  */
-const emailIsExisting = (email) => {
+const userIsExisting = (email) => {
   for (let userId in users) {
     if (users[userId].email === email) {
-      return true;
+      return userId;
     }
   }
-  return false;
+  return null;
 };
+
+/**
+ * 
+ * @param userId userId of user
+ * @param pass password received through request
+ * @returns true if pass matches the password of saved user, else return false
+ */
+const passwordMatches = (userId, pass) => {
+  if (users[userId].password === pass) return true;
+  false;
+}
 
 app.listen(PORT, () => {
   console.log(`Example app listening on port ${PORT}!`);
