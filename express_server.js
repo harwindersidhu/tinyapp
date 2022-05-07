@@ -4,9 +4,15 @@ const PORT = 8080; // default port 8080
 app.set("view engine", "ejs");
 const bodyParser = require("body-parser");
 app.use(bodyParser.urlencoded({extended: true}));
-let cookieParser = require('cookie-parser');
-app.use(cookieParser());
 const bcrypt = require("bcryptjs");
+
+let cookieSession = require('cookie-session');
+app.set('trust proxy', 1) // trust first proxy
+
+app.use(cookieSession({
+  name: 'session',
+  keys: ['key1', 'key2']
+}))
 
 const users = {};
 
@@ -35,15 +41,15 @@ app.get("/hello", (req, res) => {
 
 app.get("/urls", (req, res) => {
   const templateVars = {
-    urls: urlsForUser(req.cookies["user_id"]),
-    currentUser: users[req.cookies["user_id"]],
+    urls: urlsForUser(req.session.user_id), 
+    currentUser: users[req.session.user_id], 
   };
   res.render("urls_index", templateVars);
 });
 
 app.get("/urls/new", (req, res) => {
   const templateVars = {
-    currentUser: users[req.cookies["user_id"]]
+    currentUser: users[req.session.user_id] 
   };
   if (templateVars.currentUser) {
     res.render("urls_new", templateVars);
@@ -55,7 +61,7 @@ app.get("/urls/new", (req, res) => {
 
 app.get("/urls/:shortURL", (req, res) => {
   let longURL = "";
-  if (urlBelongsToCurrentUser(req.params.shortURL, req.cookies["user_id"])) {
+  if (urlBelongsToCurrentUser(req.params.shortURL, req.session.user_id)) { 
     longURL = urlDatabase[req.params.shortURL].longURL;
   } else {
     longURL = null;
@@ -63,17 +69,17 @@ app.get("/urls/:shortURL", (req, res) => {
   const templateVars = {
     shortURL: req.params.shortURL,
     longURL: longURL,
-    currentUser: users[req.cookies["user_id"]],
+    currentUser: users[req.session.user_id], 
   };
   res.render("urls_show", templateVars);
 });
 
 app.post("/urls", (req, res) => {
-  if (req.cookies["user_id"]) {
+  if (req.session.user_id) { 
     let shortURL = generateRandomString();
     let newUrlDatabaseObj = {
       longURL: req.body.longURL,
-      userID: req.cookies["user_id"]
+      userID: req.session.user_id 
     }; 
     urlDatabase[shortURL] = newUrlDatabaseObj;
     console.log(urlDatabase);
@@ -96,9 +102,9 @@ app.get("/u/:shortURL", (req, res) => {
 });
 
 app.post("/urls/:shortURL/delete", (req, res) => {
-  if (!(users[req.cookies["user_id"]])) { 
+  if (!(users[req.session.user_id])) { 
     res.status(403).send("You must log in to delete.");
-  } else if (!(urlBelongsToCurrentUser(req.params.shortURL, req.cookies["user_id"]))) {
+  } else if (!(urlBelongsToCurrentUser(req.params.shortURL, req.session.user_id))) { 
     res.status(403).send("This url doesnot belong to you. So you can not delete it.");
   } else {
     delete urlDatabase[req.params.shortURL];
@@ -107,9 +113,9 @@ app.post("/urls/:shortURL/delete", (req, res) => {
 });
 
 app.post("/urls/:id", (req, res) => {
-  if (!(users[req.cookies["user_id"]])) {
+  if (!(users[req.session.user_id])) { 
     res.status(403).send("You must log in to update.");
-  } else if (!(urlBelongsToCurrentUser(req.params.id, req.cookies["user_id"]))) {
+  } else if (!(urlBelongsToCurrentUser(req.params.id, req.session.user_id))) { 
     res.status(403).send("This url doesnot belong to you. So you can not update it.");
   } else {
     let newLongURL = req.body.newLongURL;
@@ -130,26 +136,26 @@ app.post("/login", (req, res) => {
   } else if (!(passwordMatches(currUserId, password))) {
     res.status(403).send("Wrong password. Please check your password.");
   } else {
-    res.cookie("user_id", currUserId);
+    req.session.user_id = currUserId;
     res.redirect("/urls");
   }
 });
 
 app.get("/login", (req, res) => {
   const templateVars = {
-    currentUser: users[req.cookies["user_id"]]
+    currentUser: users[req.session.user_id]
   };
   res.render("login", templateVars);
 });
 
 app.post("/logout", (req, res) => {
-  res.clearCookie("user_id");
+  req.session = null
   res.redirect("/urls");
 });
 
 app.get("/register", (req, res) => {
   const templateVars = {
-    currentUser: users[req.cookies["user_id"]]
+    currentUser: users[req.session.user_id] 
   };
   res.render("register", templateVars);
 });
@@ -172,7 +178,7 @@ app.post("/register", (req, res) => {
       password: hashedPassword
     };
     users[userId] = newUser;
-    res.cookie("user_id", userId);
+    req.session.user_id = userId;
     console.log(users);
     res.redirect("/urls");
   } 
