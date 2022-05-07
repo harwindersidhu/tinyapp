@@ -6,6 +6,7 @@ const bodyParser = require("body-parser");
 app.use(bodyParser.urlencoded({extended: true}));
 let cookieParser = require('cookie-parser');
 app.use(cookieParser());
+const bcrypt = require("bcryptjs");
 
 const users = {};
 
@@ -164,10 +165,11 @@ app.post("/register", (req, res) => {
   } else if (userIsExisting(email)) { //If email is already existing, send back a response with the 400 status code
     res.status(400).send("Email already exists. Please use another email");
   } else {
+    const hashedPassword = bcrypt.hashSync(password, 10);
     let newUser = {
       userId,
       email,
-      password
+      password: hashedPassword
     };
     users[userId] = newUser;
     res.cookie("user_id", userId);
@@ -212,8 +214,7 @@ const userIsExisting = (email) => {
  * @returns true if pass matches the password of saved user, else return false
  */
 const passwordMatches = (userId, pass) => {
-  if (users[userId].password === pass) return true;
-  false;
+  return bcrypt.compareSync(pass, users[userId].password);
 }
 
 /**
