@@ -9,9 +9,20 @@ app.use(cookieParser());
 
 const users = {};
 
+// const urlDatabase = {
+//   "b2xVn2": "http://www.lighthouselabs.ca",
+//   "9sm5xK": "http://www.google.com"
+// };
+
 const urlDatabase = {
-  "b2xVn2": "http://www.lighthouselabs.ca",
-  "9sm5xK": "http://www.google.com"
+  "b2xVn2": {
+    longURL: "http://www.lighthouselabs.ca",
+    userID: "aJ48lW"
+  },
+  "9sm5xK": {
+    longURL: "http://www.google.com",
+    userID: "aJ48lW"
+  }
 };
 
 app.get("/", (req, res) => {
@@ -38,29 +49,48 @@ app.get("/urls/new", (req, res) => {
   const templateVars = {
     currentUser: users[req.cookies["user_id"]]
   };
-  res.render("urls_new", templateVars);
+  if (templateVars.currentUser) {
+    res.render("urls_new", templateVars);
+  } else {
+    res.redirect("/login");
+  }
+  
 });
 
 app.get("/urls/:shortURL", (req, res) => {
   const templateVars = {
     shortURL: req.params.shortURL,
-    longURL: urlDatabase[req.params.shortURL],
+    longURL: urlDatabase[req.params.shortURL].longURL,
     currentUser: users[req.cookies["user_id"]],
   };
   res.render("urls_show", templateVars);
 });
 
 app.post("/urls", (req, res) => {
-  console.log(req.body);
-  let shortURL = generateRandomString();
-  urlDatabase[shortURL] = req.body.longURL;
-  res.redirect(`/urls/${shortURL}`);
+  if (req.cookies["user_id"]) {
+    let shortURL = generateRandomString();
+    let newUrlDatabaseObj = {
+      longURL: req.body.longURL,
+      userID: req.cookies["user_id"]
+    }; 
+    urlDatabase[shortURL] = newUrlDatabaseObj;
+    console.log(urlDatabase);
+    res.redirect(`/urls/${shortURL}`);
+  } else {
+    res.status(403).send("You should login first in order to create new url");
+  }
+  
 });
 
 app.get("/u/:shortURL", (req, res) => {
   let shortURL = req.params.shortURL;
-  let longURL = urlDatabase[shortURL];
-  res.redirect(longURL);
+  if (urlDatabase[shortURL]) {
+    let longURL = urlDatabase[shortURL].longURL;
+    res.redirect(longURL);
+  } else {
+    res.status(403).send("There is no such id present. Please check the given id.");
+  }
+  
 });
 
 app.post("/urls/:shortURL/delete", (req, res) => {
@@ -70,7 +100,7 @@ app.post("/urls/:shortURL/delete", (req, res) => {
 
 app.post("/urls/:id", (req, res) => {
   let newLongURL = req.body.newLongURL;
-  urlDatabase[req.params.id] = newLongURL;
+  urlDatabase[req.params.id].longURL = newLongURL;
   res.redirect("/urls");
 });
 
