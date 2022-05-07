@@ -9,11 +9,6 @@ app.use(cookieParser());
 
 const users = {};
 
-// const urlDatabase = {
-//   "b2xVn2": "http://www.lighthouselabs.ca",
-//   "9sm5xK": "http://www.google.com"
-// };
-
 const urlDatabase = {
   "b2xVn2": {
     longURL: "http://www.lighthouselabs.ca",
@@ -39,7 +34,7 @@ app.get("/hello", (req, res) => {
 
 app.get("/urls", (req, res) => {
   const templateVars = {
-    urls: urlDatabase,
+    urls: urlsForUser(req.cookies["user_id"]),
     currentUser: users[req.cookies["user_id"]],
   };
   res.render("urls_index", templateVars);
@@ -58,9 +53,15 @@ app.get("/urls/new", (req, res) => {
 });
 
 app.get("/urls/:shortURL", (req, res) => {
+  let longURL = "";
+  if (urlBelongsToCurrentUser(req.params.shortURL, req.cookies["user_id"])) {
+    longURL = urlDatabase[req.params.shortURL].longURL;
+  } else {
+    longURL = null;
+  }
   const templateVars = {
     shortURL: req.params.shortURL,
-    longURL: urlDatabase[req.params.shortURL].longURL,
+    longURL: longURL,
     currentUser: users[req.cookies["user_id"]],
   };
   res.render("urls_show", templateVars);
@@ -94,14 +95,27 @@ app.get("/u/:shortURL", (req, res) => {
 });
 
 app.post("/urls/:shortURL/delete", (req, res) => {
-  delete urlDatabase[req.params.shortURL];
-  res.redirect("/urls");
+  if (!(users[req.cookies["user_id"]])) { 
+    res.status(403).send("You must log in to delete.");
+  } else if (!(urlBelongsToCurrentUser(req.params.shortURL, req.cookies["user_id"]))) {
+    res.status(403).send("This url doesnot belong to you. So you can not delete it.");
+  } else {
+    delete urlDatabase[req.params.shortURL];
+    res.redirect("/urls");
+  }
 });
 
 app.post("/urls/:id", (req, res) => {
-  let newLongURL = req.body.newLongURL;
-  urlDatabase[req.params.id].longURL = newLongURL;
-  res.redirect("/urls");
+  if (!(users[req.cookies["user_id"]])) {
+    res.status(403).send("You must log in to update.");
+  } else if (!(urlBelongsToCurrentUser(req.params.id, req.cookies["user_id"]))) {
+    res.status(403).send("This url doesnot belong to you. So you can not update it.");
+  } else {
+    let newLongURL = req.body.newLongURL;
+    urlDatabase[req.params.id].longURL = newLongURL;
+    res.redirect("/urls");
+  }
+  
 });
 
 app.post("/login", (req, res) => {
@@ -200,6 +214,36 @@ const userIsExisting = (email) => {
 const passwordMatches = (userId, pass) => {
   if (users[userId].password === pass) return true;
   false;
+}
+
+/**
+ * 
+ * @param id id of the currently logged in user
+ * @returns only that objects of urlDatabase which are relevent to currently logged in user
+ */
+const urlsForUser = (id) => {
+  let currUserUrlDatabase = {};
+  for (let url in urlDatabase) {
+    if (urlDatabase[url].userID === id) {
+      currUserUrlDatabase[url] = urlDatabase[url];
+    }
+  }
+  return currUserUrlDatabase;
+};
+
+/**
+ * 
+ * @param url shortUrl to check if it belongs to current user
+ * @param currUserId userID of current user
+ * @returns true if provided short url belongs to current user, else returns false.
+ */
+const urlBelongsToCurrentUser = (url, currUserId) => {
+  let currUserUrlDatabase = urlsForUser(currUserId);
+  let shortUrlsForCurrUser = Object.keys(currUserUrlDatabase);
+  if (!(shortUrlsForCurrUser.includes(url))) {
+    return false;
+  } 
+  return true;
 }
 
 app.listen(PORT, () => {
