@@ -9,6 +9,10 @@ const bcrypt = require("bcryptjs");
 let cookieSession = require('cookie-session');
 app.set('trust proxy', 1) // trust first proxy
 
+var methodOverride = require('method-override');
+// override with POST having ?_method=DELETE
+app.use(methodOverride('_method'))
+
 const { getUserByEmail, generateRandomString, urlsForUser, urlBelongsToCurrentUser } = require("./helpers");
 
 app.use(cookieSession({
@@ -103,7 +107,7 @@ app.get("/u/:shortURL", (req, res) => {
   
 });
 
-app.post("/urls/:shortURL/delete", (req, res) => {
+app.delete("/urls/:shortURL", (req, res) => {
   if (!(users[req.session.user_id])) { 
     res.status(403).send("You must log in to delete.");
   } else if (!(urlBelongsToCurrentUser(req.params.shortURL, req.session.user_id, urlDatabase))) { 
@@ -114,7 +118,7 @@ app.post("/urls/:shortURL/delete", (req, res) => {
   }
 });
 
-app.post("/urls/:id", (req, res) => {
+app.put("/urls/:id", (req, res) => {
   if (!(users[req.session.user_id])) { 
     res.status(403).send("You must log in to update.");
   } else if (!(urlBelongsToCurrentUser(req.params.id, req.session.user_id, urlDatabase))) { 
