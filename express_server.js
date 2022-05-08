@@ -7,34 +7,25 @@ app.use(bodyParser.urlencoded({extended: true}));
 const bcrypt = require("bcryptjs");
 
 let cookieSession = require('cookie-session');
-app.set('trust proxy', 1) // trust first proxy
+app.set('trust proxy', 1); // trust first proxy
 
-var methodOverride = require('method-override');
+let methodOverride = require('method-override');
 // override with POST having ?_method=DELETE
-app.use(methodOverride('_method'))
+app.use(methodOverride('_method'));
 
 const { getUserByEmail, generateRandomString, urlsForUser, urlBelongsToCurrentUser } = require("./helpers");
 
 app.use(cookieSession({
   name: 'session',
   keys: ['key1', 'key2']
-}))
+}));
 
 const users = {};
 
-const urlDatabase = {
-  "b2xVn2": {
-    longURL: "http://www.lighthouselabs.ca",
-    userID: "aJ48lW"
-  },
-  "9sm5xK": {
-    longURL: "http://www.google.com",
-    userID: "aJ48lW"
-  }
-};
+const urlDatabase = {};
 
 app.get("/", (req, res) => {
-  res.send("Hello!");
+  res.redirect("/login");
 });
 
 app.get("/urls.json", (req, res) => {
@@ -45,29 +36,31 @@ app.get("/hello", (req, res) => {
   res.send("<html><body>Hello <b>World</b></body></html>\n");
 });
 
+//Route to display all urls
 app.get("/urls", (req, res) => {
   const templateVars = {
-    urls: urlsForUser(req.session.user_id, urlDatabase), 
-    currentUser: users[req.session.user_id], 
+    urls: urlsForUser(req.session.user_id, urlDatabase),
+    currentUser: users[req.session.user_id],
   };
   res.render("urls_index", templateVars);
 });
 
+//Create new url
 app.get("/urls/new", (req, res) => {
   const templateVars = {
-    currentUser: users[req.session.user_id] 
+    currentUser: users[req.session.user_id]
   };
   if (templateVars.currentUser) {
     res.render("urls_new", templateVars);
   } else {
     res.redirect("/login");
   }
-  
 });
 
+//display short url and corresponding long url and contain form to edit long url
 app.get("/urls/:shortURL", (req, res) => {
   let longURL = "";
-  if (urlBelongsToCurrentUser(req.params.shortURL, req.session.user_id, urlDatabase)) { 
+  if (urlBelongsToCurrentUser(req.params.shortURL, req.session.user_id, urlDatabase)) {
     longURL = urlDatabase[req.params.shortURL].longURL;
   } else {
     longURL = null;
@@ -75,18 +68,19 @@ app.get("/urls/:shortURL", (req, res) => {
   const templateVars = {
     shortURL: req.params.shortURL,
     longURL: longURL,
-    currentUser: users[req.session.user_id], 
+    currentUser: users[req.session.user_id],
   };
   res.render("urls_show", templateVars);
 });
 
+//Route to add new url to urlDatabase
 app.post("/urls", (req, res) => {
-  if (req.session.user_id) { 
+  if (req.session.user_id) {
     let shortURL = generateRandomString();
     let newUrlDatabaseObj = {
       longURL: req.body.longURL,
-      userID: req.session.user_id 
-    }; 
+      userID: req.session.user_id
+    };
     urlDatabase[shortURL] = newUrlDatabaseObj;
     console.log(urlDatabase);
     res.redirect(`/urls/${shortURL}`);
@@ -96,6 +90,7 @@ app.post("/urls", (req, res) => {
   
 });
 
+//Route to load long url corresponding to given short url
 app.get("/u/:shortURL", (req, res) => {
   let shortURL = req.params.shortURL;
   if (urlDatabase[shortURL]) {
@@ -107,10 +102,11 @@ app.get("/u/:shortURL", (req, res) => {
   
 });
 
+//Route to delete given url
 app.delete("/urls/:shortURL", (req, res) => {
-  if (!(users[req.session.user_id])) { 
+  if (!(users[req.session.user_id])) {
     res.status(403).send("You must log in to delete.");
-  } else if (!(urlBelongsToCurrentUser(req.params.shortURL, req.session.user_id, urlDatabase))) { 
+  } else if (!(urlBelongsToCurrentUser(req.params.shortURL, req.session.user_id, urlDatabase))) {
     res.status(403).send("This url doesnot belong to you. So you can not delete it.");
   } else {
     delete urlDatabase[req.params.shortURL];
@@ -118,10 +114,11 @@ app.delete("/urls/:shortURL", (req, res) => {
   }
 });
 
+//Route to update long url
 app.put("/urls/:id", (req, res) => {
-  if (!(users[req.session.user_id])) { 
+  if (!(users[req.session.user_id])) {
     res.status(403).send("You must log in to update.");
-  } else if (!(urlBelongsToCurrentUser(req.params.id, req.session.user_id, urlDatabase))) { 
+  } else if (!(urlBelongsToCurrentUser(req.params.id, req.session.user_id, urlDatabase))) {
     res.status(403).send("This url doesnot belong to you. So you can not update it.");
   } else {
     let newLongURL = req.body.newLongURL;
@@ -131,6 +128,7 @@ app.put("/urls/:id", (req, res) => {
   
 });
 
+//Route to implement login request
 app.post("/login", (req, res) => {
   let email = req.body.email;
   let password = req.body.password;
@@ -139,7 +137,7 @@ app.post("/login", (req, res) => {
     res.status(400).send("Email or password can't be empty");
   } else if (!currUserId) {
     res.status(403).send("Email cannot be found. Please check your email.");
-  } else if (!(bcrypt.compareSync(password, users[currUserId].password))) { 
+  } else if (!(bcrypt.compareSync(password, users[currUserId].password))) {
     res.status(403).send("Wrong password. Please check your password.");
   } else {
     req.session.user_id = currUserId;
@@ -147,6 +145,7 @@ app.post("/login", (req, res) => {
   }
 });
 
+//Route to get login form
 app.get("/login", (req, res) => {
   const templateVars = {
     currentUser: users[req.session.user_id]
@@ -154,18 +153,21 @@ app.get("/login", (req, res) => {
   res.render("login", templateVars);
 });
 
+//Route to implement logout request
 app.post("/logout", (req, res) => {
-  req.session = null
+  req.session = null;
   res.redirect("/urls");
 });
 
+//Route to get register form
 app.get("/register", (req, res) => {
   const templateVars = {
-    currentUser: users[req.session.user_id] 
+    currentUser: users[req.session.user_id]
   };
   res.render("register", templateVars);
 });
 
+//Route to implement register request
 app.post("/register", (req, res) => {
   let userId = generateRandomString();
   let email = req.body.email;
@@ -187,7 +189,7 @@ app.post("/register", (req, res) => {
     req.session.user_id = userId;
     console.log(users);
     res.redirect("/urls");
-  } 
+  }
 });
 
 app.listen(PORT, () => {
